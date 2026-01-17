@@ -24,7 +24,6 @@ import { useThemeLanguage } from '../contexts/ThemeLanguageContext';
 import { ChevronRight, CheckCircle2, RefreshCw, UserCheck, Bell, BarChart2, BookOpen, MapPin, Truck, CalendarRange, Play, Square, Loader2, Megaphone, GraduationCap, School as SchoolIcon, Sparkles, User, Smartphone, ChevronLeft, History, Lock, AlertCircle, Zap, ShieldCheck, MoreHorizontal, X, LayoutGrid } from 'lucide-react';
 import { SubscriptionModal } from './SubscriptionModal';
 import { Modal } from './Modal';
-import { useModalBackHandler } from '../hooks/useModalBackHandler';
 
 interface DashboardProps {
   credentials: LoginRequest;
@@ -45,17 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
   const [teacherStack, setTeacherStack] = useState<string[]>([]);
   const [parentStack, setParentStack] = useState<string[]>([]); 
 
-  // Back Handler for All Navigation Stacks
-  useModalBackHandler(
-      (role === 'principal' && principalStack.length > 0) || 
-      (role === 'teacher' && teacherStack.length > 0) ||
-      ((role === 'parent' || role === 'student') && parentStack.length > 0), 
-      () => {
-          if (role === 'principal') setPrincipalStack(prev => prev.slice(0, -1));
-          if (role === 'teacher') setTeacherStack(prev => prev.slice(0, -1));
-          if (role === 'parent' || role === 'student') setParentStack(prev => prev.slice(0, -1));
-      }
-  );
+  // REMOVED BACK HANDLER AS REQUESTED TO FIX BLACK SCREEN ISSUE
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [isSchoolActive, setIsSchoolActive] = useState(true);
@@ -92,10 +81,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
   const [categoryUserList, setCategoryUserList] = useState<SchoolUser[]>([]);
   const [loadingUserList, setLoadingUserList] = useState(false);
 
-  useModalBackHandler(isSchoolDetailOpen, () => {
-    if (listCategory) setListCategory(null);
-    else setIsSchoolDetailOpen(false);
-  });
+  // REMOVED SCHOOL DETAIL BACK HANDLER
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -140,8 +126,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
             if (dashboardData.student_id && !targetStudent) setSelectedStudentId(dashboardData.student_id);
             localStorage.setItem('vidyasetu_dashboard_data', JSON.stringify(dashboardData));
         } else {
-            // Handle case where data is null (e.g. invalid role link or db error)
-            // Still stop loading so user sees "Profile Not Linked" or error state instead of black screen
             console.warn("Dashboard data fetch returned null");
         }
      } catch (e) {
@@ -365,7 +349,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
 
       <BottomNav currentView={currentView} onChangeView={handleViewChange} />
       
-      {/* ... (Existing Modals and Logic below remain untouched) */}
       <Modal isOpen={!!showLockPopup} onClose={() => setShowLockPopup(null)} title="ACCESS RESTRICTED"><div className="text-center py-4 space-y-6"><div className="w-20 h-20 bg-rose-500/10 text-rose-500 rounded-[2rem] flex items-center justify-center mx-auto shadow-inner"><Lock size={40} /></div><div><h4 className="text-xl font-black uppercase text-slate-800 dark:text-white tracking-tight">Services Blocked</h4><p className="text-xs text-slate-400 font-bold uppercase mt-3 px-4 leading-relaxed italic">"{showLockPopup}"</p></div><button onClick={() => setShowLockPopup(null)} className="w-full py-5 rounded-[2rem] bg-slate-900 dark:bg-brand-500 text-white font-black uppercase text-xs tracking-widest shadow-xl">Got it</button></div></Modal>
       <Modal isOpen={showPayModal} onClose={() => setShowPayModal(false)} title="PREMIUM UPGRADE"><SubscriptionModal role={role} /></Modal>
       <SettingsModal isOpen={activeMenuModal === 'settings'} onClose={() => setActiveMenuModal(null)} />
@@ -469,7 +452,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
       <AttendanceModal isOpen={teacherStack[teacherStack.length-1] === 'attendance'} onClose={() => setTeacherStack(prev => prev.slice(0, -1))} schoolId={data?.school_db_id || ''} teacherId={data?.user_id || ''} />
       <LeaveRequestModal isOpen={teacherStack[teacherStack.length-1] === 'leave'} onClose={() => setTeacherStack(prev => prev.slice(0, -1))} userId={data?.user_id || ''} schoolId={data?.school_db_id || ''} />
       <TeacherHistoryModal isOpen={teacherStack[teacherStack.length-1] === 'history'} onClose={() => setTeacherStack(prev => prev.slice(0, -1))} credentials={credentials} />
-      <Modal isOpen={teacherStack[teacherStack.length-1] === 'homework'} onClose={() => setTeacherStack(prev => prev.slice(0, -1))} title="TODAY'S PORTAL"><div className="space-y-4 premium-subview-enter"><div className="flex items-center gap-3 bg-brand-50 dark:bg-brand-500/10 p-5 rounded-[2.5rem] border border-brand-100 dark:border-brand-500/20"><div className="w-14 h-14 bg-white dark:bg-dark-900 rounded-2xl flex items-center justify-center text-brand-600 shadow-sm shrink-0"><Sparkles size={28} /></div><div className="text-left"><h4 className="font-black text-slate-800 dark:text-white uppercase leading-tight">Quick Submission</h4><p className="text-[10px] font-black text-slate-400 dark:text-brand-500/60 uppercase tracking-widest">Update {data?.total_periods || 8} sessions</p></div></div><div className="grid grid-cols-2 gap-3 pb-4">{getPeriodsArray().map((num) => { const pData = data?.periods?.find(p => p.period_number === num); const isSubmitted = pData?.status === 'submitted'; return (<div key={num} onClick={() => { setSelectedPeriod(num); setTeacherStack(prev => [...prev, 'edit_period']); }} className={`glass-card p-4 rounded-[2rem] transition-all h-36 flex flex-col justify-between cursor-pointer active:scale-95 ${isSubmitted ? 'border-brand-500/30 bg-brand-50 dark:bg-brand-500/5 shadow-inner' : ''}`}><div className="flex justify-between items-start text-left"><span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">P {num}</span>{isSubmitted && <div className="text-brand-500"><CheckCircle2 size={16} /></div>}</div><div className="min-w-0 text-left"><p className="text-sm font-black truncate uppercase text-slate-800 dark:text-white leading-tight">{pData?.subject || 'Waiting'}</p><p className="text-[9px] font-bold text-slate-400 uppercase truncate">{pData?.class_name || 'Empty'}</p></div><button className={`w-full py-2 rounded-2xl text-[8px] font-black uppercase tracking-widest ${isSubmitted ? 'bg-brand-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>{isSubmitted ? 'EDIT' : 'SET'}</button></div>); })}</div><button onClick={() => setTeacherStack(prev => prev.slice(0, -1))} className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-50 dark:border-white/5">Close Portal</button></div></Modal>
+      <Modal isOpen={teacherStack[teacherStack.length-1] === 'homework'} onClose={() => setTeacherStack(prev => prev.slice(0, -1))} title="TODAY'S PORTAL"><div className="space-y-4 premium-subview-enter"><div className="flex items-center gap-3 bg-brand-5 dark:bg-brand-500/10 p-5 rounded-[2.5rem] border border-brand-100 dark:border-brand-500/20"><div className="w-14 h-14 bg-white dark:bg-dark-900 rounded-2xl flex items-center justify-center text-brand-600 shadow-sm shrink-0"><Sparkles size={28} /></div><div className="text-left"><h4 className="font-black text-slate-800 dark:text-white uppercase leading-tight">Quick Submission</h4><p className="text-[10px] font-black text-slate-400 dark:text-brand-500/60 uppercase tracking-widest">Update {data?.total_periods || 8} sessions</p></div></div><div className="grid grid-cols-2 gap-3 pb-4">{getPeriodsArray().map((num) => { const pData = data?.periods?.find(p => p.period_number === num); const isSubmitted = pData?.status === 'submitted'; return (<div key={num} onClick={() => { setSelectedPeriod(num); setTeacherStack(prev => [...prev, 'edit_period']); }} className={`glass-card p-4 rounded-[2rem] transition-all h-36 flex flex-col justify-between cursor-pointer active:scale-95 ${isSubmitted ? 'border-brand-500/30 bg-brand-50 dark:bg-brand-500/5 shadow-inner' : ''}`}><div className="flex justify-between items-start text-left"><span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">P {num}</span>{isSubmitted && <div className="text-brand-500"><CheckCircle2 size={16} /></div>}</div><div className="min-w-0 text-left"><p className="text-sm font-black truncate uppercase text-slate-800 dark:text-white leading-tight">{pData?.subject || 'Waiting'}</p><p className="text-[9px] font-bold text-slate-400 uppercase truncate">{pData?.class_name || 'Empty'}</p></div><button className={`w-full py-2 rounded-2xl text-[8px] font-black uppercase tracking-widest ${isSubmitted ? 'bg-brand-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>{isSubmitted ? 'EDIT' : 'SET'}</button></div>); })}</div><button onClick={() => setTeacherStack(prev => prev.slice(0, -1))} className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-t border-slate-50 dark:border-white/5">Close Portal</button></div></Modal>
       <PeriodModal isOpen={teacherStack[teacherStack.length-1] === 'edit_period'} onClose={() => setTeacherStack(prev => prev.slice(0, -1))} periodNumber={selectedPeriod || 1} onSubmit={handlePeriodSubmit} initialData={data?.periods?.find(p => p.period_number === selectedPeriod)} schoolDbId={data?.school_db_id} />
 
       {data && (
