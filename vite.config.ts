@@ -18,6 +18,19 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve('.'),
         }
+      },
+      build: {
+        chunkSizeWarningLimit: 2000, // Increased limit to 2000kb to hide warning
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              // Split node_modules into a separate 'vendor' file
+              if (id.includes('node_modules')) {
+                return 'vendor';
+              }
+            }
+          }
+        }
       }
     };
 });

@@ -139,9 +139,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
             setIsUserActive(dashboardData.subscription_status === 'active');
             if (dashboardData.student_id && !targetStudent) setSelectedStudentId(dashboardData.student_id);
             localStorage.setItem('vidyasetu_dashboard_data', JSON.stringify(dashboardData));
-            setTimeout(() => setInitialLoading(false), 300);
+        } else {
+            // Handle case where data is null (e.g. invalid role link or db error)
+            // Still stop loading so user sees "Profile Not Linked" or error state instead of black screen
+            console.warn("Dashboard data fetch returned null");
         }
-     } catch (e) {}
+     } catch (e) {
+         console.error("Dashboard fetch error", e);
+     } finally {
+        // ALWAYS stop loading, whether success or failure
+        setTimeout(() => setInitialLoading(false), 300);
+     }
   }, [credentials, role]);
 
   useEffect(() => {
