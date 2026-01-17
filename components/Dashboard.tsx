@@ -21,7 +21,7 @@ import { TransportTrackerModal } from './TransportTrackerModal';
 import { LeaveRequestModal, StaffLeaveManagementModal, StudentLeaveRequestModal } from './LeaveModals';
 import { TeacherHistoryModal } from './TeacherHistoryModal';
 import { useThemeLanguage } from '../contexts/ThemeLanguageContext';
-import { ChevronRight, CheckCircle2, RefreshCw, UserCheck, Bell, BarChart2, BookOpen, MapPin, Truck, CalendarRange, Play, Square, Loader2, Megaphone, GraduationCap, School as SchoolIcon, Sparkles, User, Smartphone, ChevronLeft, History, Lock, AlertCircle, Zap, ShieldCheck, MoreHorizontal, X, LayoutGrid } from 'lucide-react';
+import { ChevronRight, CheckCircle2, RefreshCw, UserCheck, Bell, BarChart2, BookOpen, MapPin, Truck, CalendarRange, Play, Square, Loader2, Megaphone, GraduationCap, School as SchoolIcon, Sparkles, User, Smartphone, ChevronLeft, History, Lock, AlertCircle, Zap, ShieldCheck, MoreHorizontal, X, LayoutGrid, WifiOff, LogOut } from 'lucide-react';
 import { SubscriptionModal } from './SubscriptionModal';
 import { Modal } from './Modal';
 
@@ -44,7 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
   const [teacherStack, setTeacherStack] = useState<string[]>([]);
   const [parentStack, setParentStack] = useState<string[]>([]); 
 
-  // REMOVED BACK HANDLER AS REQUESTED TO FIX BLACK SCREEN ISSUE
+  // NOTE: Back Handler Removed completely as requested to prevent conflicts.
 
   const [data, setData] = useState<DashboardData | null>(null);
   const [isSchoolActive, setIsSchoolActive] = useState(true);
@@ -81,7 +81,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
   const [categoryUserList, setCategoryUserList] = useState<SchoolUser[]>([]);
   const [loadingUserList, setLoadingUserList] = useState(false);
 
-  // REMOVED SCHOOL DETAIL BACK HANDLER
+  // FAILSAFE: Force remove loading screen after 3 seconds to prevent "Black Screen"
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        if (initialLoading) {
+            console.warn("Forcing loading state off due to timeout");
+            setInitialLoading(false);
+        }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [initialLoading]);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -125,13 +134,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
             setIsUserActive(dashboardData.subscription_status === 'active');
             if (dashboardData.student_id && !targetStudent) setSelectedStudentId(dashboardData.student_id);
             localStorage.setItem('vidyasetu_dashboard_data', JSON.stringify(dashboardData));
-        } else {
-            console.warn("Dashboard data fetch returned null");
         }
      } catch (e) {
          console.error("Dashboard fetch error", e);
      } finally {
-        // ALWAYS stop loading, whether success or failure
         setTimeout(() => setInitialLoading(false), 300);
      }
   }, [credentials, role]);
@@ -232,6 +238,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
       return Array.from({ length: count }, (_, i) => i + 1);
   };
 
+  // --- ERROR STATE UI ---
+  // If loading is done but data is null (meaning fetch failed), show this instead of a broken page
+  if (!initialLoading && !data) {
+      return (
+        <div className="fixed inset-0 h-screen w-screen bg-[#F8FAFC] dark:bg-dark-950 flex flex-col">
+            <Header onRefresh={handleManualRefresh} onOpenSettings={() => {}} onOpenAbout={() => {}} onOpenHelp={() => {}} onLogout={onLogout} />
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6">
+                <div className="w-24 h-24 bg-rose-50 dark:bg-rose-900/10 rounded-full flex items-center justify-center text-rose-500 shadow-sm">
+                    <WifiOff size={40} />
+                </div>
+                <div>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Connection Issue</h3>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2 px-8 leading-relaxed">
+                        Unable to sync with school database. Please check your internet.
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3 w-full max-w-xs">
+                    <button onClick={handleManualRefresh} className="w-full py-4 bg-brand-500 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl shadow-brand-500/20 active:scale-95 transition-all">
+                        Retry Sync
+                    </button>
+                    <button onClick={onLogout} className="w-full py-4 bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-400 rounded-[2rem] font-black uppercase text-xs tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <LogOut size={14} /> Logout
+                    </button>
+                </div>
+            </div>
+            <BottomNav currentView={currentView} onChangeView={handleViewChange} />
+        </div>
+      );
+  }
+
   return (
     <div className="fixed inset-0 h-screen w-screen bg-[#F8FAFC] dark:bg-dark-950 flex flex-col overflow-hidden transition-colors">
       <Header onRefresh={handleManualRefresh} onOpenSettings={() => setActiveMenuModal('settings')} onOpenAbout={() => setActiveMenuModal('about')} onOpenHelp={() => setActiveMenuModal('help')} onOpenNotices={() => setIsNoticeListOpen(true)} onLogout={onLogout} />
@@ -242,7 +278,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
             <>
                 <div className="w-full px-4 pt-3 pb-0.5 z-[40] flex-shrink-0">
                     <div className="max-w-4xl mx-auto w-full">
-                        {initialLoading && !data ? <SkeletonSchoolCard /> : <SchoolInfoCard schoolName={data?.school_name || ''} schoolCode={data?.school_code || ''} onClick={handleSchoolCardClick} />}
+                        {initialLoading ? <SkeletonSchoolCard /> : <SchoolInfoCard schoolName={data?.school_name || ''} schoolCode={data?.school_code || ''} onClick={handleSchoolCardClick} />}
                         
                         <div className="flex items-center justify-between mt-1 mb-2.5 px-1.5">
                              <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
@@ -349,6 +385,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
 
       <BottomNav currentView={currentView} onChangeView={handleViewChange} />
       
+      {/* ... (Modals Section) */}
       <Modal isOpen={!!showLockPopup} onClose={() => setShowLockPopup(null)} title="ACCESS RESTRICTED"><div className="text-center py-4 space-y-6"><div className="w-20 h-20 bg-rose-500/10 text-rose-500 rounded-[2rem] flex items-center justify-center mx-auto shadow-inner"><Lock size={40} /></div><div><h4 className="text-xl font-black uppercase text-slate-800 dark:text-white tracking-tight">Services Blocked</h4><p className="text-xs text-slate-400 font-bold uppercase mt-3 px-4 leading-relaxed italic">"{showLockPopup}"</p></div><button onClick={() => setShowLockPopup(null)} className="w-full py-5 rounded-[2rem] bg-slate-900 dark:bg-brand-500 text-white font-black uppercase text-xs tracking-widest shadow-xl">Got it</button></div></Modal>
       <Modal isOpen={showPayModal} onClose={() => setShowPayModal(false)} title="PREMIUM UPGRADE"><SubscriptionModal role={role} /></Modal>
       <SettingsModal isOpen={activeMenuModal === 'settings'} onClose={() => setActiveMenuModal(null)} />
@@ -363,8 +400,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ credentials, role, userNam
         <div className="flex flex-col h-[70vh]">
           {!listCategory ? (
              <div className="space-y-6 overflow-y-auto no-scrollbar pb-4 flex-1 relative">
-                
-                {/* Refresh Button */}
                 <button 
                     onClick={handleSyncSchoolSummary}
                     disabled={schoolSummaryRefreshing}
